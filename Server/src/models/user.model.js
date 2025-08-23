@@ -5,14 +5,11 @@ import jwt from "jsonwebtoken";
 
 
 const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, unique: true },
-  password: String,
-  username: { type: String, unique: true },
-  walletAddress: { type: String, default: '' },
-  totalXP: { type: Number, default: 0 },
-  certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }],
-  createdCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, enum: ["PM", "Admin"], default: "PM" },
+  username: { type: String, required: true, unique: true },
 }, { timestamps: true });
 
 userSchema.pre("save", async function (next) {
