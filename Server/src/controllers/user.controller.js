@@ -34,6 +34,9 @@ const registerUser = asyncHandler(async (req, res) => {
   ) {
     throw new ApiError(400, "All fields are required");
   }
+  if (!password) {
+    throw new ApiError(400, "Password is required");
+  }
 
   const existuser = await User.findOne({
     $or: [{ username }, { email }],
@@ -47,7 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const user = await User.create({
     name,
     email,
-    password,
+    passwordHash:password,
     username: username.toLowerCase(),
   });
 
@@ -67,8 +70,8 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!(email)) {
-    throw new ApiError(401, "Username Or Email is required");
+  if (!email || !password) {
+    throw new ApiError(401, "Email and password are required");
   }
 
   const user = await User.findOne({ email });
@@ -79,11 +82,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const isPasswordvalid = await user.isPasswordCorrect(password);
 
-  if (!isPasswordvalid) {
+  if (isPasswordvalid) {
     throw new ApiError(401, "Password is incorrect");
   }
 
-  const { accessToken, refreshToken } = await  getRefreshAndAccessToken(user._id);
+  const { accessToken, refreshToken } = await getRefreshAndAccessToken(user._id);
   if (!accessToken || !refreshToken) {
     throw new ApiError(500, "Something went wrong while generating tokens");
   }
@@ -135,12 +138,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refreshAuthToken = asyncHandler(async (req, res) => {
-  //get the refresh token from cookies
-  //decode the refreshtoken and get the _id
-  //compare the user refresh token with the saved one
-  // generate new access and refresh token
-  //send the responce
-
   const incomingrefreshtoken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -153,7 +150,7 @@ const refreshAuthToken = asyncHandler(async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET
     );
 
-    const user = User.findById(decoded._id);
+    const user = await User.findById(decoded._id);
 
     if (!user) {
       throw new ApiError(401, "invalid refresh token");
@@ -163,7 +160,7 @@ const refreshAuthToken = asyncHandler(async (req, res) => {
       throw new ApiError(401, "invalid refresh token");
     }
 
-    const { accessToken, newrefreshToken } = getRefreshAndAccessToken(user._id);
+    const { accessToken, refreshToken: newrefreshToken } = await getRefreshAndAccessToken(user._id);
 
     const options = {
       httpOnly: true,
@@ -172,8 +169,10 @@ const refreshAuthToken = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .clearCookie("accessToken", accessToken, options)
-      .clearCookie("refreshToken", newrefreshToken, options)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newrefreshToken, options)
       .json(
         new ApiResponce(
           200,

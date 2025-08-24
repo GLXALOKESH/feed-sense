@@ -1,22 +1,48 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { backend_url } from "../constants";
+import axios from "axios";
 
 export default function SignupPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     fullName: "",
     email: "",
     password: "",
-    confirmPassword: "",
-    companyName: "",
+    role: "",
   });
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Form Submitted:", form);
+    // Make API call to register the user
+    axios.post(`${backend_url}/api/v1/users/register`, {
+      name: form.fullName,
+      email: form.email,
+      password: form.password,
+      role: form.role
+    }).then((res) => {
+      if(res.status == 201){
+        navigate("/login");
+      }
+      console.log("Registration Successful:", res.data);
+      alert("Registration Successful! Please log in.");
+      setForm({
+        fullName: "",
+        email: "",
+        password: "",
+        role: "",
+      });
+    }).catch((err) => {
+      console.error("Registration Failed:", err.response?.data || err.message);
+      alert(`Registration Failed: ${err.response?.data?.message || err.message}`);
+    });
+
   };
 
   return (
@@ -56,20 +82,12 @@ export default function SignupPage() {
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               required
             />
-            <input
-              type="password"
-              name="confirmPassword"
-              placeholder="Confirm Password"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              required
-            />
+           
             <input
               type="text"
-              name="companyName"
-              placeholder="Company Name"
-              value={form.companyName}
+              name="role"
+              placeholder="Role (e.g. PM or Admin)"
+              value={form.role}
               onChange={handleChange}
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />

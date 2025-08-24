@@ -14,14 +14,20 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre("save", async function (next) {
 
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("passwordHash")) return next();
 
-  this.password = await bcrype.hash(this.password, 10);
+  this.passwordHash = await bcrype.hash(this.passwordHash, 10);
   next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
-  return await bcrype.compare(password, this.password);
+  if (!this.passwordHash) {
+    throw new Error("No password hash set for user");
+  }
+  if (!password) {
+    throw new Error("No password provided for comparison");
+  }
+  return await bcrype.compare(password, this.passwordHash);
 };
 
 userSchema.methods.generateAccessToken = function () {
