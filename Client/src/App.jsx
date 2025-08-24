@@ -11,10 +11,11 @@ import Callsummery from './pages/Callsummery.jsx';
 import Callshistory from './pages/Callhistory.jsx'; 
 import Transcript from './pages/Transcript.jsx';
 import Profilesetting from './pages/Profilesetting.jsx';
+import Landing from './pages/Landing.jsx';
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <div>Hello World</div>,
+    element: <Landing />,
   },
   {
     path: "/signup",

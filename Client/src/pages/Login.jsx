@@ -1,7 +1,38 @@
-import React from "react";
+import React, { useState } from "react";
 import { Mail, Lock, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+// import axios from "axios";
+// import { backend_url } from "../constants";
 
 export default function App() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ phone: "", password: "" });
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(
+        `${backend_url}/api/v1/users/login`,
+        {
+          phone: form.phone,
+          password: form.password,
+        },
+        { withCredentials: true }
+      );
+      navigate("/dashboard");
+    } catch (err) {
+      alert(
+        err.response?.data?.message ||
+          err.response?.data?.msg ||
+          "Login failed"
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-blue-100 to-cyan-100">
       <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
@@ -18,14 +49,18 @@ export default function App() {
         </h2>
 
         {/* Form */}
-        <form className="space-y-4">
-          {/* Email */}
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {/* Phone */}
           <div className="flex items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-400">
-            <Mail className="text-gray-400 w-5 h-5 mr-2" />
+            <Phone className="text-gray-400 w-5 h-5 mr-2" />
             <input
-              type="email"
-              placeholder="Email"
+              type="text"
+              name="phone"
+              placeholder="Phone Number"
+              value={form.phone}
+              onChange={handleChange}
               className="w-full outline-none text-gray-700"
+              required
             />
           </div>
 
@@ -34,8 +69,12 @@ export default function App() {
             <Lock className="text-gray-400 w-5 h-5 mr-2" />
             <input
               type="password"
+              name="password"
               placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
               className="w-full outline-none text-gray-700"
+              required
             />
           </div>
 
