@@ -8,7 +8,7 @@ import {
   getProfile,
   updateProfile,
 } from "../controllers/user.controller.js";
-import { verifyToken } from "../middlewares/auth.middleware.js";
+import { verifyToken } from "../middleware/auth.middleware.js";
 
 const router = Router();
 

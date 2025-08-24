@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Client</title>
+</head>
+<body>
+  <h1>WebSocket Client</h1>
+  <button id="startCallBtn">Start the Call</button>
+  <button id="closeBtn" disabled>Close</button>
+  <pre id="log"></pre>
+  <script>
+    let ws;
+    let audioCtx, source, processor;
+    const log = document.getElementById('log');
+    function logMsg(msg) {
+      log.textContent += msg + '\n';
+    }
+
+    async function startMicStream() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioCtx.createMediaStreamSource(stream);
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+        processor.onaudioprocess = function(e) {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            const input = e.inputBuffer.getChannelData(0);
+            // Convert Float32Array [-1,1] to Int16 PCM
+            const pcm = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+              let s = Math.max(-1, Math.min(1, input[i]));
+              pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            ws.send(pcm.buffer);
+          }
+        };
+        logMsg('Microphone streaming started');
+      } catch (err) {
+        logMsg('Mic error: ' + err);
+      }
+    }
+
+    function stopMicStream() {
+      if (processor) processor.disconnect();
+      if (source) source.disconnect();
+      if (audioCtx) audioCtx.close();
+      processor = source = audioCtx = null;
+      logMsg('Microphone streaming stopped');
+    }
+
+    // Play received PCM audio
+    function playPCM(buffer) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const int16 = new Int16Array(buffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768;
+      }
+      const audioBuffer = audioCtx.createBuffer(1, float32.length, 48000);
+      audioBuffer.getChannelData(0).set(float32);
+      const bufSource = audioCtx.createBufferSource();
+      bufSource.buffer = audioBuffer;
+      bufSource.connect(audioCtx.destination);
+      bufSource.start();
+    }
+
+    document.getElementById('startCallBtn').onclick = function() {
+      ws = new WebSocket('ws://localhost:8080/feedback/from-user');
+      logMsg('Starting call...');
+      ws.binaryType = 'arraybuffer';
+      ws.onopen = function() {
+        logMsg('Call started and connected');
+        document.getElementById('closeBtn').disabled = false;
+        ws.send(JSON.stringify({ type: 'start', codec: 'pcm', container: 'wav', sampleRate: 48000, channels: 1 }));
+        startMicStream();
+      };
+      ws.onmessage = function(e) {
+        if (typeof e.data === 'string') {
+          logMsg('Received: ' + e.data);
+        } else if (e.data instanceof ArrayBuffer) {
+          playPCM(e.data);
+        }
+      };
+      ws.onclose = function(e) {
+        logMsg('Closed: ' + e.reason);
+        document.getElementById('closeBtn').disabled = true;
+        stopMicStream();
+      };
+      ws.onerror = function(e) {
+        logMsg('Error: ' + e.message);
+      };
+    };
+  // ...existing code...
+    document.getElementById('closeBtn').onclick = function() {
+      if (ws) {
+        ws.close(1000, 'client_closed');
+        logMsg('Closing connection...');
+        stopMicStream();
+      }
+    };
+  </script>
+</body>
+</html>
