@@ -211,6 +211,36 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponce(200, req.user, "User fetched Successfully"));
 });
 
+// Get current user's profile
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-passwordHash -refreshToken");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+};
+
+// Update current user's profile
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email, company, role } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { name, email, company, role },
+      { new: true, runValidators: true, select: "-passwordHash -refreshToken" }
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+};
 
 export {
   registerUser,
@@ -219,4 +249,6 @@ export {
   refreshAuthToken,
   getCurrentUser,
   getUserProfile,
+  getProfile,
+  updateProfile,
 };

@@ -12,8 +12,14 @@ export default function AllProducts() {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
+      console.log("Fetching products...");
       try {
-        const res = await axios.post(`${backend_url}/api/v1/products/get-products`, { withCredentials: true });
+        const res = await axios.post(
+  `${backend_url}/api/v1/products/get-products`,
+  {}, // request body
+  { withCredentials: true } // config
+);
+
         setProducts(res.data.data.products || []);
       } catch {
         setProducts([]);

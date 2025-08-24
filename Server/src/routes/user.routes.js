@@ -5,9 +5,10 @@ import {
   loginUser,
   refreshAuthToken,
   getCurrentUser,
+  getProfile,
+  updateProfile,
 } from "../controllers/user.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
-
 
 const router = Router();
 
@@ -20,6 +21,10 @@ router.route("/login").post(loginUser);
 
 
 // router.route("/get-user").post(verifyToken, getCurrentUser);
+
+router.route("/profile")
+  .get(verifyToken, getProfile)
+  .put(verifyToken, updateProfile);
 
 
 export default router;
