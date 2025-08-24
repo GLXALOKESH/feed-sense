@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Mail, Lock, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// import axios from "axios";
-// import { backend_url } from "../constants";
+import axios from "axios";
+import { backend_url } from "../constants.js";
 
 export default function App() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ phone: "", password: "" });
+  const [form, setForm] = useState({ phone: "", email: "", password: "" });
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -19,6 +19,7 @@ export default function App() {
         `${backend_url}/api/v1/users/login`,
         {
           phone: form.phone,
+          email: form.email,
           password: form.password,
         },
         { withCredentials: true }
@@ -50,17 +51,17 @@ export default function App() {
 
         {/* Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Phone */}
+          {/* Phone or Email */}
           <div className="flex items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-400">
             <Phone className="text-gray-400 w-5 h-5 mr-2" />
+            
             <input
-              type="text"
-              name="phone"
-              placeholder="Phone Number"
-              value={form.phone}
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={form.email}
               onChange={handleChange}
               className="w-full outline-none text-gray-700"
-              required
             />
           </div>
 

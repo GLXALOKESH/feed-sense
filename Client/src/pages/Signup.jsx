@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { Mail, Lock, User } from "lucide-react"; // icons
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-// import { backend_url } from "../constants.js";
+import { backend_url } from "../constants";
 
 export default function Signup() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
+    email: "",
     password: "",
     role: "",
   });
@@ -23,6 +24,7 @@ export default function Signup() {
       await axios.post(`${backend_url}/api/v1/users/register`, {
         name: form.fullName,
         phone: form.phone,
+        email: form.email,
         password: form.password,
         role: form.role,
       });
@@ -70,6 +72,20 @@ export default function Signup() {
               placeholder="Phone Number"
               className="w-full outline-none text-gray-700"
               value={form.phone}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          {/* Email */}
+          <div className="flex items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-purple-400">
+            <Mail className="text-gray-400 w-5 h-5 mr-2" />
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              className="w-full outline-none text-gray-700"
+              value={form.email}
               onChange={handleChange}
               required
             />

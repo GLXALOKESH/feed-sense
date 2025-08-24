@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+torch
+soundfile
+numpy
+TTS
+openai-whisper
+transformers
+accelerate
+safetensors

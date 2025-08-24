@@ -7,16 +7,13 @@ import { decode } from "jsonwebtoken";
 
 const getRefreshAndAccessToken = async (userid) => {
   try {
-    const user = await  User.findById(userid);
+    const user = await User.findById(userid);
     const accessToken = await user.generateAccessToken();
     const refreshToken = await user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
 
     await user.save({ validateBeforeSave: false });
-    // console.log("refreshToken", refreshToken);
-    // console.log("accessToken", accessToken);
-    
     return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(
@@ -27,11 +24,8 @@ const getRefreshAndAccessToken = async (userid) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const {  email, name, password, role } = req.body;
-  const username = email.split("@")[0];
-  if (
-    [username, email, name, password].some((field) => field?.trim() === "")
-  ) {
+  const { email, name, password, role, phone } = req.body;
+  if ([email, name, password, phone].some((field) => field?.trim() === "")) {
     throw new ApiError(400, "All fields are required");
   }
   if (!password) {
@@ -39,23 +33,24 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const existuser = await User.findOne({
-    $or: [{ username }, { email }],
+    $or: [{ email }, { phone }],
   });
 
   if (existuser) {
-    throw new ApiError(409, "Username or email already exists");
+    throw new ApiError(409, "Email or phone already exists");
   }
 
-
+  // Save password as plain text (for demo only)
   const user = await User.create({
     name,
     email,
-    passwordHash:password,
-    username: username.toLowerCase(),
+    passwordHash: password,
+    phone,
+    role,
   });
 
   const createduser = await User.findById(user._id).select(
-    "-password -refreshToken"
+    "-passwordHash -refreshToken"
   );
 
   if (!createduser) {
@@ -70,8 +65,8 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    throw new ApiError(401, "Email and password are required");
+  if ((!email) || !password) {
+    throw new ApiError(401, "Email/phone and password are required");
   }
 
   const user = await User.findOne({ email });
@@ -80,9 +75,10 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  const isPasswordvalid = await user.isPasswordCorrect(password);
+  // Compare plain text password
+  const isPasswordvalid = password === user.passwordHash;
 
-  if (isPasswordvalid) {
+  if (!isPasswordvalid) {
     throw new ApiError(401, "Password is incorrect");
   }
 
@@ -101,154 +97,19 @@ const loginUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, { ...options, sameSite: "lax" })
+    .cookie("refreshToken", refreshToken, { ...options, sameSite: "lax" })
     .json(
       new ApiResponce(
         200,
-        { user: loggedinUser, accessToken, refreshToken },
+        { user: { name: user.name, phone: user.phone, email: user.email, role: user.role }, accessToken, refreshToken },
         "User Logged in Successfully"
       )
     );
 });
 
-const logoutUser = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: {
-        refreshToken: 1,
-      },
-    },
-    {
-      new: true,
-    }
-  );
-
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
-
-  return res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new ApiResponce(200, {}, "Successfully Logged Out"));
-});
-
-const refreshAuthToken = asyncHandler(async (req, res) => {
-  const incomingrefreshtoken =
-    req.cookies.refreshToken || req.body.refreshToken;
-
-  if (!incomingrefreshtoken) {
-    throw new ApiError(401, "No refresh token found");
-  }
-  try {
-    const decoded = jwt.verify(
-      incomingrefreshtoken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-
-    const user = await User.findById(decoded._id);
-
-    if (!user) {
-      throw new ApiError(401, "invalid refresh token");
-    }
-
-    if (incomingrefreshtoken !== user.refreshToken) {
-      throw new ApiError(401, "invalid refresh token");
-    }
-
-    const { accessToken, refreshToken: newrefreshToken } = await getRefreshAndAccessToken(user._id);
-
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-    return res
-      .status(200)
-      .clearCookie("accessToken", options)
-      .clearCookie("refreshToken", options)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newrefreshToken, options)
-      .json(
-        new ApiResponce(
-          200,
-          {
-            accessToken,
-            refreshToken: newrefreshToken,
-          },
-          "new RefreshToken and AccessToken Generated"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(
-      400,
-      error?.messege || "Something Went wrong while generating new tokens"
-    );
-  }
-});
-
-const getUserProfile = asyncHandler(async (req, res) => {
-  const { userId } = req.user._id;
-
-  if (!userId) {
-    throw new ApiError(400, "User ID is required");
-  }
-
-  const user = await User.findById(userId).select("-password -refreshToken");
-
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
-  return res.status(200).json(new ApiResponce(200, user, "User profile fetched successfully"));
-});
-
-const getCurrentUser = asyncHandler(async (req, res) => {
-  return res.status(200).json(new ApiResponce(200, req.user, "User fetched Successfully"));
-});
-
-// Get current user's profile
-const getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select("-passwordHash -refreshToken");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json({ success: true, data: user });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch profile" });
-  }
-};
-
-// Update current user's profile
-const updateProfile = async (req, res) => {
-  try {
-    const { name, email, company, role } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { name, email, company, role },
-      { new: true, runValidators: true, select: "-passwordHash -refreshToken" }
-    );
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json({ success: true, data: user });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to update profile" });
-  }
-};
 
 export {
   registerUser,
-  logoutUser,
   loginUser,
-  refreshAuthToken,
-  getCurrentUser,
-  getUserProfile,
-  getProfile,
-  updateProfile,
 };

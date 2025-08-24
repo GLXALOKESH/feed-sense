@@ -138,3 +138,5 @@ dist
 
 # SvelteKit build / generate output
 .svelte-kit
+.ai_python_service/
+.ai_services/

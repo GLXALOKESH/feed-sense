@@ -1,0 +1,27 @@
+# Python virtual environments
+venv/
+.env/
+.venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+
+# AI/ML model files
+*.h5
+*.pt
+*.pth
+*.ckpt
+*.pb
+*.tflite
+*.onnx
+*.joblib
+*.pkl
+*.sav
+*.npz
+*.npy
+models/
+saved_models/
+checkpoints/
+runs/
+logs/
